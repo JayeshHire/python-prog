@@ -62,3 +62,26 @@ class HttpHandler:
     def handle_DELETE(self):
         pass 
 
+
+# resolver class to resolve the methods
+class Resolver:
+    def __init__(self, request):
+        self.request = request
+        self.__action()
+    
+    def __action(self):
+        lines = self.request.split("\r\n")
+        line = lines[0]
+        first_l = line.split(" ")
+        self.method = first_l[0]
+        self.path = first_l[1]
+        self.protocol = first_l[2]
+        try:
+            self.content = lines[lines.index("")+1]
+        except IndexError: 
+            self.content = ""
+
+
+    def __str__(self):
+        return f"Request {{ \n\tmethod: {self.method}, \n\tpath: {self.path}, \n\tprotocol: {self.protocol}, \n\tcontent: {self.content}\n\t}}"
+    
