@@ -92,6 +92,9 @@ class URLEncodedForm(FormAbstract):
             if self.content_length is None:
                 raise OpSeqInvalidException("call extract_header and validate_content_type method first before calling get_form_data ")
             
+            if not self.validate_content_type():
+                raise UnsupportedMediaTypeException(f"Content type should be 'application/x-www-form-urlencoded' but {self.content_type} was given")
+            
             form_data = d_[0:self.content_length]
 
             def form_data_deserialize(fd: str) -> dict:
@@ -140,6 +143,9 @@ class MultipartForm(FormAbstract):
             return False
 
     def get_form_data(self):
+        if not self.validate_content_type():
+            raise UnsupportedMediaTypeException(f"content type should be 'multipart/form-data' but {self.content_type} was given")
+        
         pat = fr"\r\n(--{self.boundary}\r\n.*\r\n\r\n.*\r\n--{self.boundary}--)"
         cd_pat = fr'--{self.boundary}\r\ncontent-disposition:\s*(.*\r\n\r\n.*)\r\n--{self.boundary}'
         cd_val_pat = "(.*);.*"
@@ -156,7 +162,10 @@ class MultipartForm(FormAbstract):
                 field_name = re.search(cd_name_pat, cd, re.IGNORECASE).groups()[0]
                 field_val = re.search(field_val_pat, cd, re.IGNORECASE).groups()[0]
             fields[field_name] = field_val
-        return fields
+        self.form_data = fields
 
     def submit(self):
-        pass
+        self.get_request_line()
+        self.extract_header()
+        self.validate_content_type()
+        self.get_form_data()
