@@ -97,7 +97,7 @@ class RoadLogistic(Logistic):
         attr_vals = {attr: getattr(self, attr, None) for attr in attrs}
         loaded = 0 if attr_vals['loaded'] is None else attr_vals['loaded']
 
-        return Truck(vehicle_no = attr_vals['vehicle_no'], 
+        return self.transport_cls(vehicle_no = attr_vals['vehicle_no'], 
         vehicle_name = attr_vals['vehicle_name'],
         capatity = attr_vals['capacity'],
         loaded = loaded
@@ -105,10 +105,34 @@ class RoadLogistic(Logistic):
     
 
 class SeaLogistics(Logistic):
+    var_attrs = [{
+        "attr_name": "ship_name",
+        "type": AttrTypeEnum.NormalAttr
+    },
+    {
+        "attr_name": "capacity",
+        "type": AttrTypeEnum.NormalAttr
+    },
+    {
+        "attr_name": "loaded"
+        "type": AttrTypeEnum.DefaultValAttr,
+        "value": 0
+    }
+    ]
     transport_cls = Ship
 
     def create_transport(self):
-        return Ship('Titanic', 2000)
+        if not check_attrs_availability(self):
+            raise AttributeError("Run the retain_trans_detls method to the transport details for this class")
+
+        attrs = [attr["attr_name"] for attr in self.var_attrs]
+        attr_vals = {attr: getattr(self, attr, None) for attr in attrs}
+        loaded = 0 if attr_vals['loaded'] is None else attr_vals['loaded']
+
+        return self.transport_cls(ship_name = attr_vals['ship_name'],
+        capatity = attr_vals['capacity'],
+        loaded = loaded
+        )
 
 
 class Transport(ABC):
@@ -126,7 +150,7 @@ class Overload(Exception):
     def __init__(self, msg: str):
         self.msg = msg
     
-class Underload(Exception):
+class EmptyErr(Exception):
     def __init__(self, msg):
         self.msg = msg
 
@@ -148,7 +172,7 @@ class Truck(Transport):
         if self.loaded <= quantity:
             self.loaded -= quantity
         else:
-            raise Underload(f'Truck is being underload. It has already been unloaded')
+            raise EmptyErr(f'Truck is being EmptyErr. It has already been unloaded')
 
 
 class Ship(Transport):
@@ -168,7 +192,7 @@ class Ship(Transport):
         if self.loaded <= quantity:
             self.loaded -= quantity
         else:
-            raise Underload(f'Ship is being underload. It has already been unloaded')
+            raise EmptyErr(f'Ship is being EmptyErr. It has already been unloaded')
 
 
 
