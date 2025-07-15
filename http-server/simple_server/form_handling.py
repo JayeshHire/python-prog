@@ -1,6 +1,7 @@
 import re
 from abc import ABC, abstractmethod
 import json
+from enum import Enum
 
 
 class UnsupportedMediaTypeException(Exception):
@@ -10,6 +11,13 @@ class UnsupportedMediaTypeException(Exception):
 class OpSeqInvalidException(Exception):
     def __init__(self, message):
         self.message = message
+
+
+class POSTDataType(Enum):
+    URLEncodedForm = 0
+    MultipartForm = 1
+    JSONData = 2
+    NotSupported = 3
 
 
 class FormAbstract(ABC):
@@ -106,6 +114,7 @@ class URLEncodedForm(FormAbstract):
             self.form_data = form_data_deserialize(form_data)
 
 
+# doesn't work for postman request.
 class MultipartForm(FormAbstract):
 
     def __init__(self, request_body: str):
@@ -128,8 +137,9 @@ class MultipartForm(FormAbstract):
         header_str = self.request_body.split("\r\n\r\n")[0]
         host_pattern = r"Host:\s*(.*)\r\n"
         content_type_pattern = r"Content-Type:\s*(.*)"
-        boundary_pattern = r';boundary="(.*)"'
+        boundary_pattern = r';\s*boundary=(.*)'
         content_type_val = re.search(content_type_pattern, header_str, re.IGNORECASE).groups()[0]
+        # print(content_type_val)
         self.boundary = re.search(boundary_pattern, content_type_val, re.IGNORECASE).groups()[0]
         self.host = re.search(host_pattern, header_str, re.IGNORECASE).groups()[0]
         self.content_type = re.search(r"(.*);", content_type_val, re.IGNORECASE).groups()[0]
@@ -147,8 +157,9 @@ class MultipartForm(FormAbstract):
         if not self.validate_content_type():
             raise UnsupportedMediaTypeException(f"content type should be 'multipart/form-data' but {self.content_type} was given")
         
-        pat = fr"(--{self.boundary}\r\n.*\r\n\r\n.*\r\n)"
-        cd_pat = fr'--{self.boundary}\r\ncontent-disposition:\s*(.*\r\n\r\n.*)\r\n'
+        print(self.request_body)
+        pat = fr"(--*{self.boundary}\r\n.*\r\n\r\n.*\r\n)"
+        cd_pat = fr'--*{self.boundary}\r\ncontent-disposition:\s*(.*\r\n\r\n.*)\r\n'
         f_data = re.findall(pat, self.request_body, re.IGNORECASE)
         content_dispositions = [
             re.search(cd_pat, d, re.IGNORECASE).groups()[0]
@@ -156,6 +167,7 @@ class MultipartForm(FormAbstract):
         ]
 
         fields = []
+        print(content_dispositions)
         for cd in content_dispositions:
             val_header = cd.split("\r\n\r\n")
             cd_lst = val_header[0].split(";")
@@ -173,7 +185,7 @@ class MultipartForm(FormAbstract):
                             "attrs": attrs
                         }
                     )
-
+                # print(f"fields: {fields}")
         self.form_data = fields
 
     def submit(self):
@@ -237,3 +249,26 @@ class JSONDataHandling(FormAbstract):
             self.parse_data()
         else:
             raise UnsupportedMediaTypeException(f"Content type should be 'application/json' but {self.content_type} was given")
+        
+
+class PDTypeNotSupException(Exception):
+    def __init__(self, msg, *args):
+        self.msg = msg
+
+"""
+class FormDataHandler:
+
+    def __init__(self, body_data_type: POSTDataType, ):
+        self.body_data_type = body_data_type
+    
+    def create_data_handler(self):
+        if self.body_data_type == POSTDataType.URLEncodedForm:
+            pass
+        elif self.body_data_type == POSTDataType.MultipartForm:
+            pass
+        elif self.body_data_type == POSTDataType.JSONData:
+            pass
+        else:
+            raise PDTypeNotSupException(f"POST Data Type is not supported for {self.body_data_type.value}")
+
+            """

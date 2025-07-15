@@ -1,7 +1,7 @@
 import socket 
 import logging
 import io
-from http_handler import HttpHandler
+from simple_server.Handler.http_handler import HttpHandler
 
 logger = logging.getLogger(__name__)
 
@@ -17,7 +17,7 @@ with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
     with conn:
         print(f'Connected to {addr}')
         # while True:
-        request = conn.recv(4028)
+        request = conn.recv(10000)
         # print(data)
         
         body = "Hello world"
