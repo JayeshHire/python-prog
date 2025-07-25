@@ -12,6 +12,8 @@
 # create a method for them to extract field, value and attribute for these fields.
 
 from enum import Enum
+import re
+from pydantic.dataclasses import dataclass 
 
 
 class HeaderType(Enum):
@@ -64,14 +66,87 @@ class ResponseHeader(Enum):
 
 
 def isHeaderValid(header: str, header_type: HeaderType):
-    request_headers = [h.name for h in RequestHeader]
-    response_headers = [h.name for h in ResponseHeader]
 
     if header_type == HeaderType.REQUEST_HEADER:
+        request_headers = [h.name for h in RequestHeader]
         if header in request_headers:
             return True
     elif header_type == HeaderType.RESPONSE_HEADER:
+        response_headers = [h.name for h in ResponseHeader]
         if header in response_headers:
             return True
         
     return False
+
+
+def isHeaderSyntaxValid(header_type: HeaderType, regexp):
+    pass
+
+
+def validateToken(token: str) -> bool:
+    tchar = "!#$%&'*+-.^_`|~0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
+    regex = rf"[^{tchar}]"
+    res = re.search(regex, tchar)
+    if res is None:
+        return True 
+    return False 
+
+
+@dataclass
+class Parameter():
+    name: str 
+    value: str = None
+
+
+@dataclass
+class MediaTypeMD():
+    type: str
+    subtype: str 
+    weight: int = 1
+    parameters: list[Parameter]
+
+
+# check if the accept syntax is valid or not
+def parseAccept(acceptVal: str) -> MediaTypeMD:
+    vals = acceptVal.split(",")
+    media_type_md: list[MediaTypeMD] = []
+
+    for val in vals:
+        tokens = val.split(";")
+        media_type = tokens[0].split("/")
+        type = media_type[0]
+        subtype = media_type[1]
+        params: list[Parameter] = []
+        weight = 1
+        if len(tokens) >= 2:
+            for token in tokens[1::]:
+                if "=" in token:
+                    key, val = token.split("=")
+                    if key == "q":
+                        weight = 1 if float(val) > 1 else float(val)
+                        continue
+                    param = Parameter(name=key, value=val)
+                    params.append(param)
+                    continue
+                param = Parameter(name=token)
+                params.append(param)
+        mtmd = MediaTypeMD(type, subtype, weight, params)
+        media_type_md.append(mtmd)
+    return media_type_md
+
+
+@dataclass
+class CharsetMD():
+    charset: str 
+    weight: int = 1
+
+# Accept Charset parsing
+def parseAcceptCharset(fieldVal: str):
+    tokens = fieldVal.split(",")
+    charset_md_lst: list[CharsetMD] = []
+    for token in tokens:
+        _p = token.split(";")
+        charset, weight = _p if len(_p) == 2 else [_p[0], "q=1"]
+        weight = float(weight.split("=")[1])
+        charset_md = CharsetMD(charset, weight)
+        charset_md_lst.append(charset)
