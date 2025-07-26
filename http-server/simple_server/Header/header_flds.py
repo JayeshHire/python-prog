@@ -102,8 +102,8 @@ class Parameter():
 class MediaTypeMD():
     type: str
     subtype: str 
-    weight: int = 1
-    parameters: list[Parameter]
+    weight: float = 1.000
+    parameters: list[Parameter] | None = None
 
 
 # check if the accept syntax is valid or not
@@ -114,8 +114,8 @@ def parseAccept(acceptVal: str) -> MediaTypeMD:
     for val in vals:
         tokens = val.split(";")
         media_type = tokens[0].split("/")
-        type = media_type[0]
-        subtype = media_type[1]
+        type = media_type[0].strip()
+        subtype = media_type[1].strip()
         params: list[Parameter] = []
         weight = 1
         if len(tokens) >= 2:
@@ -125,12 +125,13 @@ def parseAccept(acceptVal: str) -> MediaTypeMD:
                     if key == "q":
                         weight = 1 if float(val) > 1 else float(val)
                         continue
-                    param = Parameter(name=key, value=val)
+                    param = Parameter(name=key.strip(), value=val.strip().strip('\"'))
                     params.append(param)
                     continue
-                param = Parameter(name=token)
+                param = Parameter(name=token.strip())
                 params.append(param)
-        mtmd = MediaTypeMD(type, subtype, weight, params)
+        params = params if params != [] else None
+        mtmd = MediaTypeMD(type, subtype, weight, parameters= params)
         media_type_md.append(mtmd)
     return media_type_md
 
@@ -138,15 +139,60 @@ def parseAccept(acceptVal: str) -> MediaTypeMD:
 @dataclass
 class CharsetMD():
     charset: str 
-    weight: int = 1
+    weight: float = 1
 
 # Accept Charset parsing
-def parseAcceptCharset(fieldVal: str):
+def parseAcceptCharset(fieldVal: str) -> list[CharsetMD]:
     tokens = fieldVal.split(",")
     charset_md_lst: list[CharsetMD] = []
     for token in tokens:
         _p = token.split(";")
         charset, weight = _p if len(_p) == 2 else [_p[0], "q=1"]
         weight = float(weight.split("=")[1])
-        charset_md = CharsetMD(charset, weight)
-        charset_md_lst.append(charset)
+        charset_md = CharsetMD(charset.strip(), weight)
+        charset_md_lst.append(charset_md)
+    return charset_md_lst
+
+
+@dataclass
+class EncodingMD:
+    name: str
+    weight: float = 1.0
+
+
+# Accept Encoding parsing
+def parseAcceptEncoding(fieldVal: str) -> list[EncodingMD]:
+    tokens = fieldVal.split(",")
+    encoding_md_lst: list[EncodingMD] = []
+    for token in tokens:
+        encoding_ = token.split(";")
+        if len(encoding_) == 2:
+            encoding = encoding_[0].strip()
+            weight = 1.0
+            if encoding_[1].strip().startswith("q="):
+                weight = float(encoding_[1].strip("q="))
+            encoding_md = EncodingMD(encoding, weight)
+            encoding_md_lst.append(encoding_md)
+            continue
+        encoding = encoding_[0].strip(";").strip(" ")
+        encoding_md = EncodingMD(encoding)
+        encoding_md_lst.append(encoding_md)
+    return encoding_md_lst
+
+
+@dataclass
+class Language:
+    name: str
+    weight: float = 1.0
+
+
+# Accept-Language
+def parseAcceptLanguage(fieldVal: str) -> list[Language]:
+    results = parseAcceptEncoding(fieldVal)
+    languages: list[Language] = []
+    for result in results:
+        language = Language(result.name, result.weight)
+        languages.append(language)
+    return languages
+
+
