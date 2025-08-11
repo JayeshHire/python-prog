@@ -2,22 +2,36 @@ from abc import ABC, abstractmethod
 import types
 import inspect
 from enum import Enum
+from typing import Self
 
 
 class Helper:
 
     @classmethod
     def get_obj_vars(Obj):
+        print("hello")
+        print(inspect.isclass(type(Obj)))
         if inspect.isclass(type(Obj)):
             attrs = [attr for attr in dir(Obj) if not attr.startswith('__')]
             attrs = [attr for attr in attrs if inspect.ismethod(getattr(Obj, attr))]
             return attrs
 
 
-class Logistic(ABC):
+class Transport(ABC):
     
+    @abstractmethod
+    def load(self, quantity):
+        pass
+    
+    @abstractmethod
+    def unload(self, quantity):
+        pass
+
+
+class Logistic(ABC):
+
     @classmethod
-    def retain_trans_detls(logistics: Logistic, transport: Transport):
+    def retain_trans_detls(logistics: Self, transport: Transport):
         # logistics.vehicle_name = vehicle_name
         # logistics.vehicle_no = vehicle_no
         # logistics.loaded = loaded
@@ -26,7 +40,7 @@ class Logistic(ABC):
             setattr(logistics, attr, getattr(transport, attr))
 
     @classmethod
-    def clear_trans_detls(logistics: Logistic):
+    def clear_trans_detls(logistics: Self):
         var_attrs = Helper.get_obj_vars(transport)
         for attr in var_attrs:
             if attr == 'nt_available':
@@ -38,7 +52,7 @@ class Logistic(ABC):
 
     def check_attrs_availability(self):
         self_var_attrs = Helper.get_obj_vars(self)
-        trans_var_attrs = [attr['attr_name'] for attrs in self.var_attrs if attrs['type'] not AttrTypeEnum.DefaultValAttr]
+        trans_var_attrs = [attr['attr_name'] for attrs in self.var_attrs if attrs['type'] != AttrTypeEnum.DefaultValAttr]
         nt_available = [] # not available attributes
         for attr in trans_var_attrs:
             if attr == 'var_attrs':
@@ -64,6 +78,57 @@ class Logistic(ABC):
 class AttrTypeEnum(Enum):
     DefaultValAttr = 0
     NormalAttr = 1
+
+
+
+class OverloadErr(Exception):
+    def __init__(self, msg: str):
+        self.msg = msg
+    
+class EmptyErr(Exception):
+    def __init__(self, msg):
+        self.msg = msg
+
+
+class Truck(Transport):
+
+    def __init__(self, vehicle_no: str, vehicle_name: str, capacity: int, loaded: int = 0):
+        self.vehicle_no = vehicle_no
+        self.vehicle_name = vehicle_name
+        self.capacity = capacity
+        self.loaded = loaded
+    
+    def load(self, quantity: int):
+        if (self.capacity - self.loaded) >= quantity:
+            self.loaded += quantity
+        else:
+            raise Overload(f'Truck is being overloaded remove {self.loaded -quantity} quantities of goods')
+    
+    def unload(self, quantity: int):
+        if self.loaded <= quantity:
+            self.loaded -= quantity
+        else:
+            raise EmptyErr(f'Truck is being EmptyErr. It has already been unloaded')
+
+
+class Ship(Transport):
+
+    def __init__(self, Ship_name: str, capacity: int, loaded: int = 0):
+        self.ship_name = ship_name
+        self.capacity = capacity
+        self.loaded = loaded
+    
+    def load(self, quantity: int):
+        if (self.capacity - self.loaded) >= quantity:
+            self.loaded += quantity
+        else:
+            raise Overload(f'Ship is being overloaded remove {ship.loaded -quantity} quantities of goods')
+    
+    def unload(self, quantity: int):
+        if self.loaded <= quantity:
+            self.loaded -= quantity
+        else:
+            raise EmptyErr(f'Ship is being EmptyErr. It has already been unloaded')
 
 
 class RoadLogistic(Logistic):
@@ -114,7 +179,7 @@ class SeaLogistics(Logistic):
         "type": AttrTypeEnum.NormalAttr
     },
     {
-        "attr_name": "loaded"
+        "attr_name": "loaded",
         "type": AttrTypeEnum.DefaultValAttr,
         "value": 0
     }
@@ -135,68 +200,10 @@ class SeaLogistics(Logistic):
         )
 
 
-class Transport(ABC):
-    
-    @abstractmethod
-    def load(self, quantity):
-        pass
-    
-    @abstractmethod
-    def unload(self, quantity):
-        pass
-
-
-class Overload(Exception):
-    def __init__(self, msg: str):
-        self.msg = msg
-    
-class EmptyErr(Exception):
-    def __init__(self, msg):
-        self.msg = msg
-
-class Truck(Transport):
-
-    def __init__(self, vehicle_no: str, vehicle_name: str, capacity: int, loaded: int = 0):
-        self.vehicle_no = vehicle_no
-        self.vehicle_name = vehicle_name
-        self.capacity = capacity
-        self.loaded = loaded
-    
-    def load(self, quantity: int):
-        if (self.capacity - self.loaded) >= quantity:
-            self.loaded += quantity
-        else:
-            raise Overload(f'Truck is being overloaded remove {self.loaded -quantity} quantities of goods')
-    
-    def unload(self, quantity: int):
-        if self.loaded <= quantity:
-            self.loaded -= quantity
-        else:
-            raise EmptyErr(f'Truck is being EmptyErr. It has already been unloaded')
-
-
-class Ship(Transport):
-
-    def __init__(self, Ship_name: str, capacity: int, loaded: int = 0):
-        self.ship_name = ship_name
-        self.capacity = capacity
-        self.loaded = loaded
-    
-    def load(self, quantity: int):
-        if (self.capacity - self.loaded) >= quantity:
-            self.loaded += quantity
-        else:
-            raise Overload(f'Ship is being overloaded remove {ship.loaded -quantity} quantities of goods')
-    
-    def unload(self, quantity: int):
-        if self.loaded <= quantity:
-            self.loaded -= quantity
-        else:
-            raise EmptyErr(f'Ship is being EmptyErr. It has already been unloaded')
-
-
-
 
 def main():
 
-    rl = RoadLogistic()
+    rl = Truck(vehicle_name="Malini", vehicle_no="MH.41.AP.8909", capacity=100)
+    r1.load(90)
+    print(r1.vehicle_name)
+    # print(x)
