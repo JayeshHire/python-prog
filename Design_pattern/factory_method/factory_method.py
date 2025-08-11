@@ -8,12 +8,10 @@ from typing import Self
 class Helper:
 
     @classmethod
-    def get_obj_vars(Obj):
-        print("hello")
-        print(inspect.isclass(type(Obj)))
+    def get_obj_vars(cls, Obj):
         if inspect.isclass(type(Obj)):
-            attrs = [attr for attr in dir(Obj) if not attr.startswith('__')]
-            attrs = [attr for attr in attrs if inspect.ismethod(getattr(Obj, attr))]
+            attrs = [attr for attr in dir(Obj) if not (attr.startswith('__') or attr.startswith('_'))]
+            attrs = [attr for attr in attrs if not inspect.ismethod(getattr(Obj, attr))]
             return attrs
 
 
@@ -26,25 +24,37 @@ class Transport(ABC):
     @abstractmethod
     def unload(self, quantity):
         pass
+    
+    def deliver(self):
+        return f"Delivery successfull"
 
 
 class Logistic(ABC):
 
     @classmethod
-    def retain_trans_detls(logistics: Self, transport: Transport):
-        # logistics.vehicle_name = vehicle_name
-        # logistics.vehicle_no = vehicle_no
-        # logistics.loaded = loaded
-        var_attrs = Helper.get_obj_vars(transport)
+    def retain_trans_detls(cls, logistics: Self, **kwargs):
+        var_attrs = [ 
+            attr["attr_name"] 
+            for attr in logistics.var_attrs 
+            if attr["type"].value == 1
+            ]
+        # for attr in kwargs.keys():
+        #     if attr not in var_attrs:
+        #         raise Exception(f"Provide a value for {attr}")
+        ok_vars = []
+        for attr in kwargs.keys():
+            if attr in var_attrs:
+                ok_vars.append(attr)
+        if len(ok_vars) < len(var_attrs):
+            raise Exception("some attributes along with their values are missing")
+
         for attr in var_attrs:
-            setattr(logistics, attr, getattr(transport, attr))
+            setattr(logistics, attr, kwargs[attr])
 
     @classmethod
-    def clear_trans_detls(logistics: Self):
-        var_attrs = Helper.get_obj_vars(transport)
+    def clear_trans_detls(cls, logistics: Self):
+        var_attrs = [ attr["attr_name"] for attr in logistics.var_attrs ]
         for attr in var_attrs:
-            if attr == 'nt_available':
-                continue
             try:
                 delattr(logistics, attr)
             except AttributeError:
@@ -52,7 +62,7 @@ class Logistic(ABC):
 
     def check_attrs_availability(self):
         self_var_attrs = Helper.get_obj_vars(self)
-        trans_var_attrs = [attr['attr_name'] for attrs in self.var_attrs if attrs['type'] != AttrTypeEnum.DefaultValAttr]
+        trans_var_attrs = [attrs['attr_name'] for attrs in self.var_attrs if attrs['type'] != AttrTypeEnum.DefaultValAttr]
         nt_available = [] # not available attributes
         for attr in trans_var_attrs:
             if attr == 'var_attrs':
@@ -102,10 +112,10 @@ class Truck(Transport):
         if (self.capacity - self.loaded) >= quantity:
             self.loaded += quantity
         else:
-            raise Overload(f'Truck is being overloaded remove {self.loaded -quantity} quantities of goods')
+            raise OverloadErr(f'Truck is being overloaded remove {quantity} quantities of goods')
     
     def unload(self, quantity: int):
-        if self.loaded <= quantity:
+        if self.loaded >= quantity:
             self.loaded -= quantity
         else:
             raise EmptyErr(f'Truck is being EmptyErr. It has already been unloaded')
@@ -114,7 +124,7 @@ class Truck(Transport):
 class Ship(Transport):
 
     def __init__(self, Ship_name: str, capacity: int, loaded: int = 0):
-        self.ship_name = ship_name
+        self.ship_name = Ship_name
         self.capacity = capacity
         self.loaded = loaded
     
@@ -122,10 +132,10 @@ class Ship(Transport):
         if (self.capacity - self.loaded) >= quantity:
             self.loaded += quantity
         else:
-            raise Overload(f'Ship is being overloaded remove {ship.loaded -quantity} quantities of goods')
+            raise OverloadErr(f'Ship is being overloaded remove {quantity} quantities of goods')
     
     def unload(self, quantity: int):
-        if self.loaded <= quantity:
+        if self.loaded >= quantity:
             self.loaded -= quantity
         else:
             raise EmptyErr(f'Ship is being EmptyErr. It has already been unloaded')
@@ -155,16 +165,16 @@ class RoadLogistic(Logistic):
         # first check all the attributes are available
         # if not available raise exception and ask user to run the retain_attr method first
         # if available create a Transport obj and return
-        if not check_attrs_availability(self):
+        if not self.check_attrs_availability():
             raise AttributeError("Run the retain_trans_detls method to the transport details for this class")
 
         attrs = [attr["attr_name"] for attr in self.var_attrs]
         attr_vals = {attr: getattr(self, attr, None) for attr in attrs}
-        loaded = 0 if attr_vals['loaded'] is None else attr_vals['loaded']
+        loaded = 0 if attr_vals.get('loaded', None) is None else attr_vals['loaded']
 
         return self.transport_cls(vehicle_no = attr_vals['vehicle_no'], 
         vehicle_name = attr_vals['vehicle_name'],
-        capatity = attr_vals['capacity'],
+        capacity = attr_vals['capacity'],
         loaded = loaded
         )
     
@@ -187,23 +197,26 @@ class SeaLogistics(Logistic):
     transport_cls = Ship
 
     def create_transport(self):
-        if not check_attrs_availability(self):
+        if not self.check_attrs_availability():
             raise AttributeError("Run the retain_trans_detls method to the transport details for this class")
 
         attrs = [attr["attr_name"] for attr in self.var_attrs]
         attr_vals = {attr: getattr(self, attr, None) for attr in attrs}
         loaded = 0 if attr_vals['loaded'] is None else attr_vals['loaded']
 
-        return self.transport_cls(ship_name = attr_vals['ship_name'],
-        capatity = attr_vals['capacity'],
+        return self.transport_cls(Ship_name = attr_vals['ship_name'],
+        capacity = attr_vals['capacity'],
         loaded = loaded
         )
-
 
 
 def main():
 
     rl = Truck(vehicle_name="Malini", vehicle_no="MH.41.AP.8909", capacity=100)
-    r1.load(90)
-    print(r1.vehicle_name)
-    # print(x)
+    rl.load(90)
+    x = Helper.get_obj_vars(rl)
+    print(x)
+
+
+if __name__ == "__main__":
+    main()
